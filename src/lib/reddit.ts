@@ -1,74 +1,84 @@
-import Snoowrap from "snoowrap";
 import type { RedditStory, StorySearchParams } from "@/types";
 
-function getClient(): Snoowrap {
-  const client = new Snoowrap({
-    userAgent: process.env.REDDIT_USER_AGENT || "RedditHorrorBot/1.0",
-    clientId: process.env.REDDIT_CLIENT_ID,
-    clientSecret: process.env.REDDIT_CLIENT_SECRET,
-    username: process.env.REDDIT_USERNAME,
-    password: process.env.REDDIT_PASSWORD,
-  });
-  client.config({ requestDelay: 1000, continueAfterRatelimitError: true });
-  return client;
+const USER_AGENT = "HorrorPipeline/1.0";
+
+interface RedditPost {
+  data: {
+    id: string;
+    title: string;
+    author: string;
+    subreddit_name_prefixed: string;
+    selftext: string;
+    score: number;
+    num_comments: number;
+    url: string;
+    created_utc: number;
+    permalink: string;
+    is_self: boolean;
+  };
 }
 
-function mapSubmission(post: Snoowrap.Submission): RedditStory {
+interface RedditListing {
+  data: {
+    children: RedditPost[];
+  };
+}
+
+function mapPost(post: RedditPost): RedditStory {
   return {
-    id: post.id,
-    title: post.title,
-    author: typeof post.author === "string" ? post.author : post.author.name,
-    subreddit: post.subreddit_name_prefixed,
-    selftext: post.selftext,
-    score: post.score,
-    numComments: post.num_comments,
-    url: post.url,
-    createdUtc: post.created_utc,
-    permalink: `https://reddit.com${post.permalink}`,
+    id: post.data.id,
+    title: post.data.title,
+    author: post.data.author,
+    subreddit: post.data.subreddit_name_prefixed,
+    selftext: post.data.selftext,
+    score: post.data.score,
+    numComments: post.data.num_comments,
+    url: post.data.url,
+    createdUtc: post.data.created_utc,
+    permalink: `https://reddit.com${post.data.permalink}`,
   };
 }
 
 export async function fetchStories(
   params: StorySearchParams
 ): Promise<RedditStory[]> {
-  const client = getClient();
   const allStories: RedditStory[] = [];
 
   for (const sub of params.subreddits) {
-    const subreddit = client.getSubreddit(sub);
-    let posts: Snoowrap.Listing<Snoowrap.Submission>;
+    const timeParam =
+      params.sortBy === "top"
+        ? `&t=${params.timeFilter}`
+        : "";
+    const url = `https://www.reddit.com/r/${sub}/${params.sortBy}.json?limit=${params.limit}${timeParam}&raw_json=1`;
 
-    const opts = { time: params.timeFilter, limit: params.limit };
-
-    switch (params.sortBy) {
-      case "top":
-        posts = await subreddit.getTop(opts);
-        break;
-      case "new":
-        posts = await subreddit.getNew({ limit: params.limit });
-        break;
-      case "rising":
-        posts = await subreddit.getRising({ limit: params.limit });
-        break;
-      case "hot":
-      default:
-        posts = await subreddit.getHot({ limit: params.limit });
-        break;
-    }
-
-    const mapped = posts
-      .filter((p) => p.is_self && p.selftext.length > 0)
-      .map(mapSubmission)
-      .filter((s) => {
-        const len = s.selftext.length;
-        return (
-          s.score >= params.minScore &&
-          len >= params.minLength &&
-          len <= params.maxLength
-        );
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": USER_AGENT },
       });
 
-    allStories.push(...mapped);
+      if (!res.ok) {
+        console.error(`Failed to fetch r/${sub}: ${res.status}`);
+        continue;
+      }
+
+      const listing: RedditListing = await res.json();
+
+      const mapped = listing.data.children
+        .filter((p) => p.data.is_self && p.data.selftext.length > 0)
+        .map(mapPost)
+        .filter((s) => {
+          const len = s.selftext.length;
+          return (
+            s.score >= params.minScore &&
+            len >= params.minLength &&
+            len <= params.maxLength
+          );
+        });
+
+      allStories.push(...mapped);
+    } catch (err) {
+      console.error(`Error fetching r/${sub}:`, err);
+    }
   }
 
   return allStories;

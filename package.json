@@ -15,7 +15,6 @@
     "openai": "^6.21.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "snoowrap": "^1.23.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
