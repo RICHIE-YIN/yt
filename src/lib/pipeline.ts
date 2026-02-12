@@ -35,7 +35,7 @@ function updateRun(id: string, updates: Partial<PipelineResult>) {
  * Run the full pipeline for a single story:
  * 1. Analyze with OpenAI rubric
  * 2. Rewrite with OpenAI
- * 3. Narrate with ElevenLabs
+ * 3. Narrate with local XTTS v2
  * 4. Generate images with Gemini
  */
 export async function runPipelineForStory(

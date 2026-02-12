@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { narrate, listVoices } from "@/lib/narrator";
+import { narrate, checkTTSHealth } from "@/lib/narrator";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,10 +19,10 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const voices = await listVoices();
-    return NextResponse.json({ voices });
+    const health = await checkTTSHealth();
+    return NextResponse.json(health);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to list voices";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = err instanceof Error ? err.message : "TTS server unreachable";
+    return NextResponse.json({ error: message, status: "unreachable" }, { status: 503 });
   }
 }

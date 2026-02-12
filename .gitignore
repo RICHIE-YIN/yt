@@ -36,6 +36,12 @@ yarn-error.log*
 # output directory
 /output
 
+# TTS server
+tts/voices/*.wav
+tts/__pycache__/
+tts/.venv/
+__pycache__/
+
 # vercel
 .vercel
 

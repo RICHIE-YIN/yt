@@ -482,7 +482,7 @@ export default function Home() {
                           download
                           className="inline-block mt-3 text-xs text-red-400 hover:text-red-300"
                         >
-                          Download MP3
+                          Download WAV
                         </a>
                       </div>
                     </section>

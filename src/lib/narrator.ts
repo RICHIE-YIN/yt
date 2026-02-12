@@ -1,65 +1,49 @@
-import axios from "axios";
-import fs from "fs/promises";
-import path from "path";
-
 import type { NarrationResult } from "@/types";
 
-const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
+const TTS_SERVER = process.env.TTS_SERVER_URL || "http://localhost:8321";
 
-interface ElevenLabsVoice {
-  voice_id: string;
-  name: string;
+/**
+ * Check if the local XTTS v2 TTS server is reachable.
+ */
+export async function checkTTSHealth(): Promise<{
+  status: string;
+  model_loaded: boolean;
+  device: string;
+  reference_exists: boolean;
+}> {
+  const res = await fetch(`${TTS_SERVER}/health`);
+  if (!res.ok) throw new Error("TTS server unreachable");
+  return res.json();
 }
 
-export async function listVoices(): Promise<ElevenLabsVoice[]> {
-  const res = await axios.get(`${ELEVENLABS_BASE}/voices`, {
-    headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
-  });
-  return res.data.voices;
-}
-
+/**
+ * Synthesize speech from text using the local XTTS v2 server.
+ */
 export async function narrate(
   text: string,
   outputId: string
 ): Promise<NarrationResult> {
-  const voiceId = process.env.ELEVENLABS_VOICE_ID;
-  if (!voiceId) throw new Error("ELEVENLABS_VOICE_ID not set");
-
-  const res = await axios.post(
-    `${ELEVENLABS_BASE}/text-to-speech/${voiceId}`,
-    {
+  const res = await fetch(`${TTS_SERVER}/synthesize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       text,
-      model_id: "eleven_multilingual_v2",
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.4,
-        use_speaker_boost: true,
-      },
-    },
-    {
-      headers: {
-        "xi-api-key": process.env.ELEVENLABS_API_KEY,
-        "Content-Type": "application/json",
-        Accept: "audio/mpeg",
-      },
-      responseType: "arraybuffer",
-    }
-  );
+      output_id: outputId,
+      language: "en",
+    }),
+  });
 
-  const outputDir = process.env.OUTPUT_DIR || "./output";
-  await fs.mkdir(outputDir, { recursive: true });
-  const filePath = path.join(outputDir, `${outputId}-narration.mp3`);
-  await fs.writeFile(filePath, Buffer.from(res.data));
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || `TTS server error: ${res.status}`);
+  }
 
-  // Estimate duration: ~150 words per minute for narration
-  const wordCount = text.split(/\s+/).length;
-  const estimatedDuration = (wordCount / 150) * 60;
+  const data = await res.json();
 
   return {
-    audioUrl: `/output/${outputId}-narration.mp3`,
-    audioFilePath: filePath,
-    durationSeconds: Math.round(estimatedDuration),
-    characterCount: text.length,
+    audioUrl: data.audioUrl,
+    audioFilePath: data.audioFilePath,
+    durationSeconds: data.durationSeconds,
+    characterCount: data.characterCount,
   };
 }
