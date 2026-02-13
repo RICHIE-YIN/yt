@@ -23,6 +23,12 @@ import uuid
 os.environ.setdefault("COQUI_TOS_AGREED", "1")
 
 import torch
+
+# Coqui TTS checkpoints use custom classes that aren't in torch's safe globals.
+# PyTorch >=2.6 defaults weights_only=True which breaks loading. Patch it back.
+_original_torch_load = torch.load
+torch.load = lambda f, *args, **kw: _original_torch_load(f, *args, **dict(kw, weights_only=kw.get("weights_only", False)))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
