@@ -4,8 +4,13 @@ Local XTTS v2 TTS server for the Horror Pipeline.
 Replaces ElevenLabs with a free, self-hosted voice cloning model.
 Drop a reference WAV file into tts/voices/ and set TTS_REFERENCE_VOICE.
 
+Requires Python 3.11 (Coqui TTS does not support 3.12+).
+
 Usage:
     cd tts
+    brew install python@3.11
+    python3.11 -m venv .venv
+    source .venv/bin/activate
     pip install -r requirements.txt
     python server.py
 """

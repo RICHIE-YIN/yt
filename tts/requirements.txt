@@ -1,3 +1,4 @@
+# Requires Python 3.11 (Coqui TTS does not support 3.12+)
 TTS>=0.22.0
 torch
 fastapi
