@@ -19,6 +19,9 @@ import os
 import wave
 import uuid
 
+# Auto-accept Coqui CPML license (non-commercial) so the server can start unattended.
+os.environ.setdefault("COQUI_TOS_AGREED", "1")
+
 import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

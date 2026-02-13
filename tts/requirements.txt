@@ -1,6 +1,7 @@
 # Requires Python 3.11 (Coqui TTS does not support 3.12+)
 TTS>=0.22.0
 torch
+transformers>=4.33.0,<5
 fastapi
 uvicorn[standard]
 pydantic
